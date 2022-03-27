@@ -112,8 +112,7 @@ class CoopCron:
                 real_new_shift_count += 1
 
         print(
-            f'{real_new_shift_count} new shifts ' \
-            f'processed at {current_time_str}\n'
+            f'{real_new_shift_count} new shifts processed at {current_time_str}'
         )
 
         with open(filename, 'w') as f:
