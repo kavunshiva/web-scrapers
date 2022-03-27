@@ -89,6 +89,13 @@ class CoopCron:
                    .find_all('div', { 'class': 'col' })
         return self.parse_shifts(days)
 
+    def get_active_shift_count(self, shifts):
+        count = 0
+        for shift_details in shifts.values():
+            if 'approx_time_deleted' not in shift_details:
+                count += 1
+        return count
+
     def write_shifts_to_file(self, filename):
         if not exists(filename):
             with open(filename, 'w+') as f:
@@ -99,10 +106,13 @@ class CoopCron:
         new_shifts = self.get_shift_calendar()
 
         current_time_str = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+
+        deleted_shift_count = 0
         for id, details in shifts.items():
             if id not in new_shifts:
                 details['approx_time_deleted'] = current_time_str
                 shifts[id] = details
+                deleted_shift_count += 1
 
         real_new_shift_count = 0
         for id, details in new_shifts.items():
@@ -112,7 +122,10 @@ class CoopCron:
                 real_new_shift_count += 1
 
         print(
-            f'{real_new_shift_count} new shifts processed at {current_time_str}'
+            f'{real_new_shift_count} new shifts processed, ' \
+            f'{deleted_shift_count} shifts deleted ' \
+            f'({self.get_active_shift_count(shifts)} active shifts total) ' \
+            f'at {current_time_str}'
         )
 
         with open(filename, 'w') as f:
