@@ -109,7 +109,7 @@ class CoopCron:
 
         deleted_shift_count = 0
         for id, details in shifts.items():
-            if id not in new_shifts:
+            if id not in new_shifts and 'approx_time_deleted' not in details:
                 details['approx_time_deleted'] = current_time_str
                 shifts[id] = details
                 deleted_shift_count += 1
