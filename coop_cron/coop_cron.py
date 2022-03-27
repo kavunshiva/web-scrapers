@@ -125,7 +125,7 @@ if __name__ == '__main__':
     pp = pprint.PrettyPrinter(indent=4)
 
     parser = argparse.ArgumentParser(
-        description='Get artists from Hype Machine.'
+        description='Get available shifts from the Park Slope Food Coop.'
     )
     parser.add_argument('--username', type=str,
                         help='coop account username')
