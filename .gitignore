@@ -1,0 +1,4 @@
+__pycache__
+coop_cron/coop_cron.log
+coop_cron/shifts.json
+hype_scraper/artists.tsv
