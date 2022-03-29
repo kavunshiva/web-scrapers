@@ -28,8 +28,8 @@ class CoopCron:
             },
         ).cookies.get('sessionid')
 
-    def get_csrfmiddlewaretoken(self, login_page):
-        return bs(login_page.text, 'html.parser').find(
+    def get_csrfmiddlewaretoken(self, page):
+        return bs(page.text, 'html.parser').find(
             'input',
             {'name': 'csrfmiddlewaretoken'},
         )['value']
@@ -89,6 +89,50 @@ class CoopCron:
                    .find_all('div', { 'class': 'col' })
         return self.parse_shifts(days)
 
+    def get_shift_description(self, shift_id):
+        return r.get(
+            f'{self.BASE_URL}/shift_claim/{shift_id}/',
+            headers={
+                'cookie': \
+                    f'csrftoken={self.csrftoken}; sessionid={self.sessionid}'
+            }
+        )
+
+    def book_or_cancel_shift(self, shift_id, extra_data, confirmation_message):
+        data = {
+            'csrfmiddlewaretoken': self.get_csrfmiddlewaretoken(
+                self.get_shift_description(shift_id)
+            ),
+            'shift_id': shift_id,
+        }
+        data.update(extra_data)
+
+        res = r.post(
+            f'{self.BASE_URL}/shift_claim/{shift_id}/',
+            headers={
+                'cookie': \
+                    f'csrftoken={self.csrftoken}; sessionid={self.sessionid}',
+                'Referer': f'{self.BASE_URL}/shift_claim/{shift_id}/',
+            },
+            data=data,
+        )
+
+        return True if re.search(confirmation_message, res.text) else False
+
+    def book_shift(self, shift_id):
+        return self.book_or_cancel_shift(
+            shift_id,
+            {'claim': 'Work this shift'},
+            'You are now scheduled to work this shift.',
+        )
+
+    def cancel_shift(self, shift_id):
+        return self.book_or_cancel_shift(
+            shift_id,
+            {'cancel': 'CANCEL SHIFT'},
+            'You have cancelled your shift.',
+        )
+
     def get_active_shift_count(self, shifts):
         count = 0
         for shift_details in shifts.values():
@@ -96,36 +140,46 @@ class CoopCron:
                 count += 1
         return count
 
-    def write_shifts_to_file(self, filename):
+    def delete_shifts_from_collection(self, shifts, new_shifts, ts):
+        deleted_shift_count = 0
+        for id, details in shifts.items():
+            if id not in new_shifts and 'approx_time_deleted' not in details:
+                details['approx_time_deleted'] = ts
+                shifts[id] = details
+                deleted_shift_count += 1
+        return deleted_shift_count
+
+    def add_shifts_to_collection(self, shifts, new_shifts, ts):
+        real_new_shift_count = 0
+        for id, details in new_shifts.items():
+            if id not in shifts:
+                details['approx_time_added'] = ts
+                shifts[id] = details
+                real_new_shift_count += 1
+        return real_new_shift_count
+
+    def load_shifts_from_file(self, filename):
         if not exists(filename):
             with open(filename, 'w+') as f:
                 f.write('{}')
         with open(filename, 'r') as f:
             shifts = json.loads(f.read())
+        return shifts
 
+    def write_shifts_to_file(self, filename):
+        shifts = self.load_shifts_from_file(filename)
         new_shifts = self.get_shift_calendar()
-
-        current_time_str = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-
-        deleted_shift_count = 0
-        for id, details in shifts.items():
-            if id not in new_shifts and 'approx_time_deleted' not in details:
-                details['approx_time_deleted'] = current_time_str
-                shifts[id] = details
-                deleted_shift_count += 1
-
-        real_new_shift_count = 0
-        for id, details in new_shifts.items():
-            if id not in shifts:
-                details['approx_time_added'] = current_time_str
-                shifts[id] = details
-                real_new_shift_count += 1
+        ts = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        deleted_shift_count = \
+            self.delete_shifts_from_collection(shifts, new_shifts, ts)
+        real_new_shift_count = \
+            self.add_shifts_to_collection(shifts, new_shifts, ts)
 
         print(
             f'{real_new_shift_count} new shifts processed, ' \
             f'{deleted_shift_count} shifts deleted ' \
             f'({self.get_active_shift_count(shifts)} active shifts total) ' \
-            f'at {current_time_str}'
+            f'at {ts}'
         )
 
         with open(filename, 'w') as f:
