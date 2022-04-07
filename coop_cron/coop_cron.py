@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup as bs
 from datetime import date, datetime
 from os.path import exists
+import subprocess
 import json
 import pprint
 import re
@@ -9,9 +10,16 @@ import requests as r
 class CoopCron:
     BASE_URL = 'https://members.foodcoop.com/services'
 
-    def __init__(self, username, password):
+    CMD = '''
+    on run argv
+      display notification (item 2 of argv) with title (item 1 of argv)
+    end run
+    '''
+
+    def __init__(self, username, password, target_shift={}):
         self.username = username
         self.password = password
+        self.target_shift = target_shift
         self.csrftoken, self.sessionid = self.login()
 
     def get_sessionid(self, csrftoken, csrfmiddlewaretoken):
@@ -156,6 +164,23 @@ class CoopCron:
                 details['approx_time_added'] = ts
                 shifts[id] = details
                 real_new_shift_count += 1
+            if (
+                (id not in shifts or 'booked' not in shifts[id]) and \
+                self.target_shift and \
+                self.target_shift['title'] == details['title'] and \
+                re.search(
+                    self.target_shift['date'],
+                    details['shift_time'],
+                ) and \
+                self.book_shift(id)
+            ):
+                details['booked'] = True
+                shifts[id] = details
+                self.notify(
+                    f"{details['title']} at {details['shift_time']}",
+                    f"booked at {datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}",
+                )
+
         return real_new_shift_count
 
     def load_shifts_from_file(self, filename):
@@ -185,6 +210,9 @@ class CoopCron:
         with open(filename, 'w') as f:
             f.write(json.dumps(shifts, indent=4))
 
+    def notify(self, title, text):
+        subprocess.call(['osascript', '-e', self.CMD, title, text])
+
 if __name__ == '__main__':
     import argparse
 
@@ -197,8 +225,17 @@ if __name__ == '__main__':
                         help='coop account username')
     parser.add_argument('--password', type=str,
                         help='coop account password')
+    parser.add_argument('--shift_title', type=str,
+                        help='target shift name')
+    parser.add_argument('--target_date', type=str,
+                        help='target shift date')
 
     args = parser.parse_args()
 
-    cc = CoopCron(args.username, args.password)
+    target_shift = {}
+
+    if (args.shift_title and args.target_date):
+        target_shift = {'title': args.shift_title, 'date': args.target_date}
+
+    cc = CoopCron(args.username, args.password, target_shift)
     cc.write_shifts_to_file('shifts.json')
