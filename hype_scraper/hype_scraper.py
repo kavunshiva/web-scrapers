@@ -31,13 +31,13 @@ def fetched_sorted_stacks(stacks):
         stacks_by_num[stack.num] = stack.result()
     return {k: stacks_by_num[k] for k in sorted(stacks_by_num)}.items()
 
-def get_artists_from_stacks(start_num, end_num):
+def get_artists_from_stacks(start_num, end_num, auth):
     stack_requests = []
     session = FuturesSession()
 
     for num in range(start_num, end_num + 1):
         url = f'https://hypem.com/stack/{num}'
-        stack_request = session.get(url)
+        stack_request = session.get(url, headers={'Cookie': f'AUTH={auth}'})
         stack_request.num = num
         stack_requests.append(stack_request)
 
@@ -52,7 +52,9 @@ if __name__ == '__main__':
                         help='the first stack from which to pull')
     parser.add_argument('--last_stack', type=int,
                         help='the last stack from which to pull')
+    parser.add_argument('--auth', type=str,
+                        help='the AUTH cookie for Hype Machine')
 
     args = parser.parse_args()
 
-    get_artists_from_stacks(args.first_stack, args.last_stack)
+    get_artists_from_stacks(args.first_stack, args.last_stack, args.auth)
