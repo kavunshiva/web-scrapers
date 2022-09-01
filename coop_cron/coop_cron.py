@@ -54,7 +54,7 @@ class CoopCron:
     def get_details(self, shift, date_str):
         id = re.search('\d+', shift['href']).group(0)
         texts = [t.strip() for t in shift.text.split('\n')]
-        title = re.search('(\w+\s)+', texts[5] or texts[3]).group(0).strip()
+        title = list(filter(None, texts))[-1].split(' ')[0]
         shift_time = datetime.strptime(
             f'{date_str} {shift.findChildren("b")[0].text}',
             '%Y-%m-%d %I:%M%p',
