@@ -1,4 +1,6 @@
 __pycache__
 coop_cron/coop_cron.log
+coop_cron/credentials.json
+coop_cron/token.pickle
 coop_cron/shifts.json
 hype_scraper/artists.tsv

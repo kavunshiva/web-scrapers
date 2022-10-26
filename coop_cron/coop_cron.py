@@ -6,6 +6,7 @@ import json
 import pprint
 import re
 import requests as r
+from gmailer import GMailer
 
 class CoopCron:
     BASE_URL = 'https://members.foodcoop.com/services'
@@ -211,7 +212,23 @@ class CoopCron:
             f.write(json.dumps(shifts, indent=4))
 
     def notify(self, title, text):
-        subprocess.call(['osascript', '-e', self.CMD, title, text])
+        try:
+            subprocess.call(['osascript', '-e', self.CMD, title, text])
+        except FileNotFoundError:
+            'This is not an OSX system: skipping alert UI call.'
+        try:
+            mailer = GMailer()
+            mailer.send_message(
+                'me',
+                mailer.create_message(
+                    'me',
+                    'kavunshiva@gmail.com',
+                    f'PSFC shift booked: {title}',
+                    text,
+                )
+            )
+        except Exception as error:
+            print(error)
 
 if __name__ == '__main__':
     import argparse
