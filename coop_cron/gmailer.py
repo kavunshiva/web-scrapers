@@ -9,7 +9,7 @@ from apiclient import errors
 import os
 
 # If modifying these scopes, delete the file token.pickle.
-SCOPES = ['https://mail.google.com/']
+SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 class GMailer:
     def __init__(self):
