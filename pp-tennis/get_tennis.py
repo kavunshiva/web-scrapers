@@ -134,13 +134,15 @@ def select_host_and_proceed_to_last_step():
     find_and_click_button('ctl00_pageContentHolder_btnCancel', By.ID, True)
 
 
-def purchase_court_time(notify_email=''):
-    WebDriverWait(driver, 10).until(
+def purchase_court_time(notify_email=None):
+    notify_email_field = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((
             By.ID,
             'ctl00_pageContentHolder_confirmationControl_txtEmailAddr',
         ))
-    ).send_keys(notify_email) # notify additional email as well on success
+    )
+    if notify_email:
+        notify_email_field.send_keys(notify_email)
 
     # TODO: enable actual booking by clicking the button...
     submit_buttons = driver.find_elements(
