@@ -6,6 +6,8 @@ import json
 import pprint
 import re
 import requests as r
+import sys
+sys.path.append('../utils/gmailer/')
 from gmailer import GMailer
 
 class CoopCron:
@@ -215,7 +217,7 @@ class CoopCron:
         try:
             subprocess.call(['osascript', '-e', self.CMD, title, text])
         except FileNotFoundError:
-            'This is not an OSX system: skipping alert UI call.'
+            print('This is not an OSX system: skipping alert UI call.')
         try:
             mailer = GMailer()
             mailer.send_message(

@@ -10,6 +10,7 @@ import os
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 class GMailer:
     def __init__(self):
@@ -18,8 +19,8 @@ class GMailer:
 
     def set_creds(self):
         creds = None
-        if os.path.exists('token.pickle'):
-            with open('token.pickle', 'rb') as token:
+        if os.path.exists(f'{CURRENT_DIR}/token.pickle'):
+            with open(f'{CURRENT_DIR}/token.pickle', 'rb') as token:
                 creds = pickle.load(token)
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
@@ -28,11 +29,14 @@ class GMailer:
             else:
                 creds = (
                     InstalledAppFlow
-                        .from_client_secrets_file('credentials.json', SCOPES)
+                        .from_client_secrets_file(
+                            f'{CURRENT_DIR}/credentials.json',
+                            SCOPES,
+                        )
                         .run_local_server(port=0)
                 )
             # Save the credentials for the next run
-            with open('token.pickle', 'wb') as token:
+            with open(f'{CURRENT_DIR}/token.pickle', 'wb') as token:
                 pickle.dump(creds, token)
         return creds
 
