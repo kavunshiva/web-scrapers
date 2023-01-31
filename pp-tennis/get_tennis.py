@@ -7,9 +7,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support.ui import Select
 from datetime import datetime
-# import sys
-# sys.path.append('../utils/gmailer/')
-# from gmailer import GMailer
+import json
+import sys
+sys.path.append('../utils/gmailer/')
+from gmailer import GMailer
 
 
 options = Options()
@@ -151,7 +152,28 @@ def purchase_court_time(notify_email=None):
     )
     # driver.find_element(By.ID, 'ctl00_pageContentHolder_btnSubmit').click()
     if submit_buttons:
+        with open('config.json', 'r') as f:
+            creds = json.load(f)
+            creds['shouldBook'] = False
+        with open('config.json', 'w') as f:
+            f.write(json.dumps(creds, indent=4))
+
         print('found the submit button')
+
+def notify_me(court_time):
+    try:
+        mailer = GMailer()
+        mailer.send_message(
+            'me',
+            mailer.create_message(
+                'me',
+                'kavunshiva@gmail.com',
+                f'Tennis court booked: {court_time}',
+                'Have fun kiddos.',
+            )
+        )
+    except Exception as error:
+        print(error)
 
 
 def book_court(available_court_time, notify_email=None):
@@ -166,6 +188,7 @@ def get_availabilities(desired_court_time, notify_email=None):
     available_court_time = get_availabile_court_time(desired_court_time)
     if available_court_time:
         book_court(available_court_time, notify_email)
+        notify_me(desired_court_time)
 
 
 if __name__ == '__main__':
@@ -193,10 +216,19 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    username = input('Enter Prospect Park Tennis Center username: ')
-    password = getpass(
-        prompt='Enter Prospect Park Tennis Center password: '
-    )
+    # username = input('Enter Prospect Park Tennis Center username: ')
+    # password = getpass(
+    #     prompt='Enter Prospect Park Tennis Center password: '
+    # )
+
+    with open('config.json', 'r') as f:
+        creds = json.load(f)
+        username = creds['username']
+        password = creds['password']
+        should_book = creds['shouldBook']
+
+    if not should_book:
+        sys.exit('already booked a session. exiting.')
 
     login(username, password)
     get_availabilities(
