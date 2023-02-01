@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from selenium import webdriver
+# from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -15,7 +16,11 @@ from gmailer import GMailer
 
 options = Options()
 options.add_argument('--headless')
-driver = webdriver.Chrome(options=options)
+# service = Service(executable_path='/usr/lib/chromium-browser/chromedriver')
+driver = webdriver.Chrome(
+    # service=service,
+    options=options
+)
 court_times = set()
 
 
