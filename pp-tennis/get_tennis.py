@@ -14,7 +14,7 @@ from gmailer import GMailer
 
 
 options = Options()
-options.headless = True
+options.add_argument('--headless')
 driver = webdriver.Chrome(options=options)
 court_times = set()
 
