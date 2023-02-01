@@ -83,6 +83,7 @@ def select_court_time(desired_court_time):
     )
     find_and_click_button('btnContinue', By.ID)
 
+
 def get_availabile_court_time(desired_court_time):
     try:
         WebDriverWait(driver, 10).until(
@@ -100,7 +101,7 @@ def get_availabile_court_time(desired_court_time):
             ),
         )
     except:
-        print(f'no court available at {desired_court_time}')
+        print(f'[{datetime.now()}] no court available at {desired_court_time}')
         return None
 
 
@@ -150,20 +151,21 @@ def purchase_court_time(notify_email=None):
     if notify_email:
         notify_email_field.send_keys(notify_email)
 
-    # TODO: enable actual booking by clicking the button...
     submit_buttons = driver.find_elements(
         By.ID,
         'ctl00_pageContentHolder_btnSubmit',
     )
-    # driver.find_element(By.ID, 'ctl00_pageContentHolder_btnSubmit').click()
     if submit_buttons:
+        print('[{datetime.now()}] found the submit button...')
+        # print('[{datetime.now()}] ...clicking it')
+        # submit_buttons[0].click() # enable to actually book
+
         with open('config.json', 'r') as f:
             creds = json.load(f)
             creds['shouldBook'] = False
         with open('config.json', 'w') as f:
             f.write(json.dumps(creds, indent=4))
 
-        print('found the submit button')
 
 def notify_me(court_time):
     try:
@@ -178,7 +180,7 @@ def notify_me(court_time):
             )
         )
     except Exception as error:
-        print(error)
+        print(f'[{datetime.now()}] {error}')
 
 
 def book_court(available_court_time, notify_email=None):
@@ -241,4 +243,7 @@ if __name__ == '__main__':
         args.notify_email,
     )
     elapsed = datetime.now() - start
-    print(f'this took {elapsed.seconds}.{elapsed.microseconds} seconds to run')
+    print((
+        f'[{datetime.now()}] '
+        f'this took {elapsed.seconds}.{elapsed.microseconds} seconds to run'
+    ))
