@@ -8,6 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support.ui import Select
 from datetime import datetime
+import pytz
 import json
 import sys
 sys.path.append('../utils/gmailer/')
@@ -22,6 +23,18 @@ driver = webdriver.Chrome(
     options=options
 )
 court_times = set()
+
+
+def check_if_too_soon(court_time):
+    days_till = (
+            pytz.timezone('US/Eastern').localize(court_time) -
+            pytz.timezone('utc').localize(datetime.now())
+    ).days
+    logged_court_time = f'[{datetime.now()}] court time {court_time} ET'
+    if days_till < 0:
+        sys.exit(f'{logged_court_time} in past. exiting.')
+    elif days_till < 1:
+        sys.exit(f'{logged_court_time} too soon (<1 day away). exiting.')
 
 
 def find_and_click_button(button_identifier, identifier_type, wait=False):
@@ -211,7 +224,7 @@ if __name__ == '__main__':
         '--court_time',
         type=str,
         help=(
-            'the date and time (ISO) you\'d like to book (in local time), '
+            'the date and time (ISO) you\'d like to book (in US Eastern time), '
             'e.g., 2022-12-15T08:00'
         ),
     )
@@ -222,6 +235,8 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
+    court_time = datetime.fromisoformat(args.court_time)
+    check_if_too_soon(court_time)
 
     # username = input('Enter Prospect Park Tennis Center username: ')
     # password = getpass(
@@ -235,11 +250,11 @@ if __name__ == '__main__':
         should_book = creds['shouldBook']
 
     if not should_book:
-        sys.exit('already booked a session. exiting.')
+        sys.exit(f'[{datetime.now()}] already booked a session. exiting.')
 
     login(username, password)
     get_availabilities(
-        datetime.fromisoformat(args.court_time),
+        court_time,
         args.notify_email,
     )
     elapsed = datetime.now() - start
