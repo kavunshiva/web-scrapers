@@ -32,9 +32,11 @@ def check_if_too_soon(court_time):
     ).days
     logged_court_time = f'[{datetime.now()}] court time {court_time} ET'
     if days_till < 0:
-        sys.exit(f'{logged_court_time} in past. exiting.')
+        print('{logged_court_time} in past. exiting.')
+        sys.exit()
     elif days_till < 1:
-        sys.exit(f'{logged_court_time} too soon (<1 day away). exiting.')
+        print(f'{logged_court_time} too soon (<1 day away). exiting.')
+        sys.exit()
 
 
 def find_and_click_button(button_identifier, identifier_type, wait=False):
