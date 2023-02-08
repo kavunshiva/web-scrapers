@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from selenium import webdriver
-# from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -17,9 +17,10 @@ from gmailer import GMailer
 
 options = Options()
 options.add_argument('--headless')
-# service = Service(executable_path='/usr/lib/chromium-browser/chromedriver')
+# service definition w/ executable_path not necessary on all systems
+service = Service(executable_path='/usr/lib/chromium-browser/chromedriver')
 driver = webdriver.Chrome(
-    # service=service,
+    service=service,
     options=options
 )
 court_times = set()
@@ -27,16 +28,16 @@ court_times = set()
 
 def check_if_too_soon(court_time):
     days_till = (
-            pytz.timezone('US/Eastern').localize(court_time) -
-            pytz.timezone('utc').localize(datetime.now())
+        pytz.timezone('US/Eastern').localize(court_time).date() -
+        datetime.now(pytz.timezone('US/Eastern')).date()
     ).days
     logged_court_time = f'[{datetime.now()}] court time {court_time} ET'
     if days_till < 0:
-        print('{logged_court_time} in past. exiting.')
-        sys.exit()
-    elif days_till < 1:
-        print(f'{logged_court_time} too soon (<1 day away). exiting.')
-        sys.exit()
+        sys.exit(f'{logged_court_time} in past. exiting.')
+    elif days_till == 1:
+        sys.exit(f'{logged_court_time} too soon (<1 day away). exiting.')
+    elif days_till > 7:
+        sys.exit(f'{logged_court_time} too far away (>1 week away). exiting.')
 
 
 def find_and_click_button(button_identifier, identifier_type, wait=False):
@@ -172,8 +173,8 @@ def purchase_court_time(notify_email=None):
     )
     if submit_buttons:
         print('[{datetime.now()}] found the submit button...')
-        # print('[{datetime.now()}] ...clicking it')
-        # submit_buttons[0].click() # enable to actually book
+        print('[{datetime.now()}] ...clicking it')
+        submit_buttons[0].click() # enable to actually book
 
         with open('config.json', 'r') as f:
             creds = json.load(f)
