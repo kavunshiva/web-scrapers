@@ -216,7 +216,7 @@ class CoopCron:
     def notify(self, title, text):
         try:
             subprocess.call(['osascript', '-e', self.CMD, title, text])
-        except FileNotFoundError:
+        except:
             print('This is not an OSX system: skipping alert UI call.')
         try:
             mailer = GMailer()
