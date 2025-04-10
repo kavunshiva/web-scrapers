@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup as bs
 from datetime import date, datetime
+import pytz
 from os.path import exists
 import subprocess
 import json
@@ -58,11 +59,10 @@ class CoopCron:
         id = re.search('\d+', shift['href']).group(0)
         texts = [t.strip() for t in shift.text.split('\n')]
         title = ' '.join(list(filter(None, texts))[-1].split(' ')[0:-1])
-        shift_time = datetime.strptime(
-            f'{date_str} {shift.findChildren("b")[0].text}',
-            '%Y-%m-%d %I:%M%p',
-        ).isoformat()
-        return (id, {'title': title, 'shift_time': shift_time})
+        return (
+            id,
+            {'title': title, 'shift_time': self.shift_time(shift, date_str)},
+        )
 
     def get_formatted_date(self, day):
         raw_date = day.findChildren('p') and day.findChildren('p')[0].text
@@ -181,7 +181,7 @@ class CoopCron:
                 shifts[id] = details
                 self.notify(
                     f"{details['title']} at {details['shift_time']}",
-                    f"booked at {datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}",
+                    f"booked at {self.formatted_current_time()}",
                 )
 
         return real_new_shift_count
@@ -197,7 +197,7 @@ class CoopCron:
     def write_shifts_to_file(self, filename):
         shifts = self.load_shifts_from_file(filename)
         new_shifts = self.get_shift_calendar()
-        ts = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        ts = self.formatted_current_time()
         deleted_shift_count = \
             self.delete_shifts_from_collection(shifts, new_shifts, ts)
         real_new_shift_count = \
@@ -231,6 +231,20 @@ class CoopCron:
             )
         except Exception as error:
             print(error)
+
+    def formatted_current_time(self):
+        return datetime.now(pytz.utc).strftime('%Y-%m-%dT%H:%M:%S %Z')
+
+    def shift_time(self, shift, date_str):
+        return pytz \
+            .timezone('US/Eastern') \
+            .localize(
+                datetime.strptime(
+                    f'{date_str} {shift.findChildren("b")[0].text}',
+                    '%Y-%m-%d %I:%M%p',
+                )
+            ) \
+            .strftime('%Y-%m-%dT%H:%M:%S %Z')
 
 if __name__ == '__main__':
     import argparse
