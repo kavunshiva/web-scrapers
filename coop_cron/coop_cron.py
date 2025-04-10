@@ -24,21 +24,13 @@ class CoopCron:
         self.username = username
         self.password = password
         self.target_shift = target_shift
-        self.csrftoken, self.sessionid = self.login()
+        self.login()
 
-    def get_sessionid(self, csrftoken, csrfmiddlewaretoken):
-        return r.post(
-            f'{self.BASE_URL}/login/',
-            headers={
-                'Referer': f'{self.BASE_URL}/login/',
-                'Cookie': f'csrftoken={csrftoken}',
-            },
-            data={
-                'username': self.username,
-                'password': self.password,
-                'csrfmiddlewaretoken': csrfmiddlewaretoken,
-            },
-        ).cookies.get('sessionid')
+    def login(self):
+        login_page = r.get(f'{self.BASE_URL}/login/')
+        self.csrftoken = login_page.cookies.get('csrftoken')
+        self.csrfmiddlewaretoken = self.get_csrfmiddlewaretoken(login_page)
+        self.sessionid = self.get_sessionid()
 
     def get_csrfmiddlewaretoken(self, page):
         return bs(page.text, 'html.parser').find(
@@ -46,14 +38,19 @@ class CoopCron:
             {'name': 'csrfmiddlewaretoken'},
         )['value']
 
-    def login(self):
-        login_page = r.get(f'{self.BASE_URL}/login/')
-        csrftoken = login_page.cookies.get('csrftoken')
-        sessionid = self.get_sessionid(
-            csrftoken,
-            self.get_csrfmiddlewaretoken(login_page),
-        )
-        return (csrftoken, sessionid)
+    def get_sessionid(self):
+        return r.post(
+            f'{self.BASE_URL}/login/',
+            headers={
+                'Referer': f'{self.BASE_URL}/login/',
+                'Cookie': f'csrftoken={self.csrftoken}',
+            },
+            data={
+                'username': self.username,
+                'password': self.password,
+                'csrfmiddlewaretoken': self.csrfmiddlewaretoken,
+            },
+        ).cookies.get('sessionid')
 
     def get_details(self, shift, date_str):
         id = re.search('\d+', shift['href']).group(0)
@@ -111,9 +108,7 @@ class CoopCron:
 
     def book_or_cancel_shift(self, shift_id, extra_data, confirmation_message):
         data = {
-            'csrfmiddlewaretoken': self.get_csrfmiddlewaretoken(
-                self.get_shift_description(shift_id)
-            ),
+            'csrfmiddlewaretoken': self.csrfmiddlewaretoken,
             'shift_id': shift_id,
         }
         data.update(extra_data)
