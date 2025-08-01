@@ -18,9 +18,9 @@ from gmailer import GMailer
 options = Options()
 options.add_argument('--headless')
 # service definition w/ executable_path not necessary on all systems
-service = Service(executable_path='/usr/lib/chromium-browser/chromedriver')
+# service = Service(executable_path='/usr/lib/chromium-browser/chromedriver')
 driver = webdriver.Chrome(
-    service=service,
+    # service=service,
     options=options
 )
 court_times = set()
@@ -79,7 +79,7 @@ def login(username, password):
 def navigate_to_scheduler():
     find_and_click_button('menu_SCH', By.ID, True) # book courts
     find_and_click_button('divContainer', By.ID, True) # court reservations
-    find_and_click_button('divContainer', By.ID, True) # online ind. court res.
+    find_and_click_button('//*[@id="divContainer"]/div', By.XPATH, True) # online ind. court res.
 
 
 def select_court_time(desired_court_time):
