@@ -4,8 +4,30 @@ from session import Session
 from courts import Courts
 import json
 
-session = Session('kavunshiva@gmail.com', 'poopytennis').session
-print('08/05/2025', 'Clay')
-print(json.dumps(Courts('08/05/2025', 'Clay', session).free_court_times, indent=4))
-print('08/05/2025', 'Hard')
-print(json.dumps(Courts('08/05/2025', 'Hard', session).free_court_times, indent=4))
+COURT_TYPES = ['Clay', 'Hard']
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description=\
+            'Get available court times from the Prospect Park Tennis Center.'
+    )
+    parser.add_argument('--email', type=str,
+                        help='tennis center account email')
+    parser.add_argument('--password', type=str,
+                        help='tennis center account email')
+    parser.add_argument('--court_date', type=str,
+                        help='date to book court (formatted: MM/DD/YYYY)')
+
+    args = parser.parse_args()
+
+    session = Session(args.email, args.password).session
+    for court_type in COURT_TYPES:
+        print(args.court_date, court_type)
+        print(
+            json.dumps(
+                Courts(args.court_date, court_type, session).free_court_times,
+                indent=4
+            )
+        )

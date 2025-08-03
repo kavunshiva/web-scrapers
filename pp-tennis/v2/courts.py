@@ -1,3 +1,4 @@
+from math import ceil
 import json
 from datetime import datetime
 
@@ -40,7 +41,10 @@ class Courts:
     def get_booked_court_times(self):
         for time_slot in self.booking_data[1]:
             start_hour = datetime.fromisoformat(time_slot['start']).hour
-            end_hour = datetime.fromisoformat(time_slot['end']).hour
+            end_hour = ceil(
+                datetime.fromisoformat(time_slot['end']).hour +
+                datetime.fromisoformat(time_slot['end']).minute / 60
+            )
             court_id = time_slot['resourceId']
             for hour in range(start_hour, end_hour):
                 self.COURT_HOUR_TIMES[hour].add(court_id)
@@ -58,7 +62,7 @@ class Courts:
             if court_names:
                 free_court_times[hour] = court_names
         return free_court_times
-    
+
     def bookable_courts(self, hour):
         bookable_courts = set()
         for court_id, court_name in self.courts_by_id.items():
