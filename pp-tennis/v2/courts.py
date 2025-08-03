@@ -10,9 +10,12 @@ class Courts:
     EVENING_COURTS = \
         {'Court 1a', 'Court 2a', 'Court 3a', 'Court 4a', 'Court 5a'}
 
-    def __init__(self, court_date, court_type, session):
+    def __init__(self, court_date, start_hour, end_hour, court_type, permitted, session):
         self.court_date = court_date
+        self.start_hour = start_hour
+        self.end_hour = end_hour
         self.court_type = court_type
+        self.permitted = permitted
         self.session = session
         self.booking_data = self.get_booking_data()
         self.courts_by_id = self.get_courts_by_id()
@@ -71,6 +74,9 @@ class Courts:
         return bookable_courts
 
     def court_bookable(self, hour, court_name):
+        if (self.start_hour and hour < self.start_hour) or \
+            (self.end_hour and hour >= self.end_hour):
+            return False
         if hour < 19:
-            return court_name in self.DAYTIME_PERMIT_COURTS
+            return self.permitted and court_name in self.DAYTIME_PERMIT_COURTS
         return court_name in self.EVENING_COURTS
