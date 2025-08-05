@@ -2,8 +2,21 @@
 
 from session import Session
 from court_times import CourtTimes
+import sys
+sys.path.append('../../utils/gmailer/')
+from gmailer import GMailer
 
 COURT_TYPES = ['Clay', 'Hard']
+
+def notify(title, text, recipient_emails):
+    try:
+        mailer = GMailer()
+        mailer.send_message(
+            'me',
+            mailer.create_message( 'me', recipient_emails, title, text)
+        )
+    except Exception as error:
+        print(error)
 
 if __name__ == '__main__':
     import argparse
@@ -22,54 +35,35 @@ if __name__ == '__main__':
                         help='beginning of time range to book court (HH:MM)')
     parser.add_argument('--end_time', type=str,
                         help='end of time range to book court (HH:MM)')
+    parser.add_argument('--recipient_emails', type=str,
+                        help='emails to notify of open courts '\
+                             '(as a comma-separated list)')
     parser.add_argument('--permitted', type=bool,
                         help='include courts requiring permit')
 
     args = parser.parse_args()
 
     session = Session(args.email, args.password).session
+    available_court_times = []
     for court_type in COURT_TYPES:
-        print(args.court_date, court_type)
-        # print(
-        #     json.dumps(
-        #         Courts(
-        #             args.court_date,
-        #             args.start_time,
-        #             args.end_time,
-        #             court_type,
-        #             args.permitted,
-        #             session
-        #         ).free_court_times,
-        #         indent=4
-        #     )
-        # )
-        free_court_times = CourtTimes(
-            args.court_date,
-            args.start_time,
-            args.end_time,
-            court_type,
-            session,
-            args.permitted,
-        ).available()
-        [print(court.id, court.name, court.start, court.end) for court in free_court_times]
-        # ).free_court_times
-        # should_book = True
-        # for start_time, court_ids in free_court_times.items():
-        #     for court_id in court_ids:
-        #         if should_book:
-        #             Court(court_id, args.court_date, start_time,
-        #                   start_time + 1, 5869, session).book()
-        #             should_book = False
-        # print(
-        #     json.dumps(
-        #         Court(
-        #             'Hard1',
-        #             '08/06/2025',
-        #             22,
-        #             23,
-        #             5869,
-        #             session
-        #         ).book(),
-        #         indent=4
-        #     )
-        # )
+        for court_time in CourtTimes(args.court_date, args.start_time,
+                                     args.end_time, court_type, session,
+                                     args.permitted).available():
+            available_court_times.append(court_time)
+    if len(available_court_times):
+        message_lines = [
+            f'The following courts are available for {args.court_date}:\n'
+        ]
+        for court_time in sorted(available_court_times, key=lambda x : x.name):
+            message_lines.append(
+                f"     {court_time.start.strftime('%I:%M%p')}: " \
+                    f'{court_time.name}'
+            )
+        message_lines.append('\nbook \'em while you still can!')
+        message = '\n'.join(message_lines)
+        if args.recipient_emails:
+            notify(f'TENNIS COURTS AVAILABLE - {args.court_date}', message,
+                   args.recipient_emails)
+        print(message)
+    else:
+        print(f'No courts are available for {args.court_date}')
