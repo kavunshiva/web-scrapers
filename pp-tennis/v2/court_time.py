@@ -20,27 +20,18 @@ class CourtTime:
         self.booked = booked
 
     def book(self, session, account_id):
-        # return json.loads(
-        #     self.session.post(
-        #         self.BOOK_COURT_URL,
-        #         json={
-        #             'Acctno': self.account_id,
-        #             'EventsParame': json.dumps(self.booking_details),
-        #             'locationid': 'Brooklyn',
-        #             'MemItemNo': 'Adult'
-        #         }
-        #     ).json()
-        # )
-        res = session.post(
-            self.BOOK_COURT_URL,
-            json={
-                'Acctno': account_id,
-                'EventsParame': json.dumps(self.booking_details(account_id)),
-                'locationid': 'Brooklyn',
-                'MemItemNo': 'Adult'
-            }
+        return json.loads(
+            session.post(
+                self.BOOK_COURT_URL,
+                json={
+                    'Acctno': account_id,
+                    'EventsParame': \
+                        json.dumps(self.booking_details(account_id)),
+                    'locationid': 'Brooklyn',
+                    'MemItemNo': 'Adult'
+                }
+            ).json()
         )
-        breakpoint()
 
     def booking_details(self, account_id):
         return {
@@ -51,15 +42,3 @@ class CourtTime:
             'Etime': self.end.strftime('%I:%M%p'),
             'Attendees': str(account_id),
         }
-        # {
-        #     "Date":"08/06/2025",
-        #     "Stime":"09:00PM",
-        #     "Etime":"10:00PM",
-        #     "Resource":"Clay2",
-        #     "Attendees":"5869",
-        #     "ItemCode":"COURTONOUT",
-        #     "Duration":"60",
-        #     "Instructors":"",
-        #     "Notes":"",
-        #     "GuestAccts":""
-        # }
