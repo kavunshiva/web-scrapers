@@ -6,10 +6,11 @@ import subprocess
 import json
 import pprint
 import re
-import requests as r
 import sys
+sys.path.append('../utils/')
 sys.path.append('../utils/gmailer/')
 from gmailer import GMailer
+from cf_bypass import CfSession
 
 class CoopCron:
     BASE_URL = 'https://members.foodcoop.com/services'
@@ -20,37 +21,39 @@ class CoopCron:
     end run
     '''
 
-    def __init__(self, username, password, target_shift={}):
+    def __init__(self, username, password, http, target_shift={}):
         self.username = username
         self.password = password
+        # A CfSession: all requests go through a real browser, which holds the
+        # Cloudflare clearance, csrftoken and sessionid cookies itself.
+        self.http = http
         self.target_shift = target_shift
         self.login()
 
     def login(self):
-        login_page = r.get(f'{self.BASE_URL}/login/')
-        self.csrftoken = login_page.cookies.get('csrftoken')
-        self.csrfmiddlewaretoken = self.get_csrfmiddlewaretoken(login_page)
-        self.sessionid = self.get_sessionid()
-
-    def get_csrfmiddlewaretoken(self, page):
-        return bs(page.text, 'html.parser').find(
-            'input',
-            {'name': 'csrfmiddlewaretoken'},
-        )['value']
-
-    def get_sessionid(self):
-        return r.post(
-            f'{self.BASE_URL}/login/',
-            headers={
-                'Referer': f'{self.BASE_URL}/login/',
-                'Cookie': f'csrftoken={self.csrftoken}',
-            },
+        login_url = f'{self.BASE_URL}/login/'
+        login_page = self.http.get(login_url)
+        res = self.http.post(
+            login_url,
             data={
                 'username': self.username,
                 'password': self.password,
-                'csrfmiddlewaretoken': self.csrfmiddlewaretoken,
+                'csrfmiddlewaretoken':
+                    self.get_csrfmiddlewaretoken(login_page),
             },
-        ).cookies.get('sessionid')
+            referer=login_url,
+        )
+        if not res.cookies.get('sessionid'):
+            raise RuntimeError(
+                f'Login failed (HTTP {res.status_code}): no sessionid cookie'
+            )
+
+    def get_csrfmiddlewaretoken(self, page):
+        field = bs(page.text, 'html.parser').find(
+            'input',
+            {'name': 'csrfmiddlewaretoken'},
+        )
+        return field['value'] if field else None
 
     def get_details(self, shift, date_str):
         id = re.search('\d+', shift['href']).group(0)
@@ -86,42 +89,29 @@ class CoopCron:
 
     def get_shift_calendar(self):
         date_str = date.today().strftime('%Y-%m-%d')
-        raw_cal = r.get(
-            f'{self.BASE_URL}/shifts/0/0/0/{date_str}',
-            headers={
-                'cookie': \
-                    f'csrftoken={self.csrftoken}; sessionid={self.sessionid}'
-            }
-        )
+        raw_cal = self.http.get(f'{self.BASE_URL}/shifts/0/0/0/{date_str}/')
         days = bs(raw_cal.text, 'html.parser') \
                    .find_all('div', { 'class': 'col' })
         return self.parse_shifts(days)
 
     def get_shift_description(self, shift_id):
-        return r.get(
-            f'{self.BASE_URL}/shift_claim/{shift_id}/',
-            headers={
-                'cookie': \
-                    f'csrftoken={self.csrftoken}; sessionid={self.sessionid}'
-            }
-        )
+        return self.http.get(f'{self.BASE_URL}/shift_claim/{shift_id}/')
 
     def book_or_cancel_shift(self, shift_id, extra_data, confirmation_message):
-        data = {
-            'csrfmiddlewaretoken': self.csrfmiddlewaretoken,
-            'shift_id': shift_id,
-        }
+        claim_url = f'{self.BASE_URL}/shift_claim/{shift_id}/'
+        # Take a fresh CSRF token from the claim form: Django rotates the
+        # csrftoken cookie on login, and the browser's cookie jar keeps the
+        # rotated one, so the token from the login form would be rejected.
+        token = self.get_csrfmiddlewaretoken(
+            self.get_shift_description(shift_id)
+        )
+        if not token:
+            return False
+
+        data = {'csrfmiddlewaretoken': token, 'shift_id': shift_id}
         data.update(extra_data)
 
-        res = r.post(
-            f'{self.BASE_URL}/shift_claim/{shift_id}/',
-            headers={
-                'cookie': \
-                    f'csrftoken={self.csrftoken}; sessionid={self.sessionid}',
-                'Referer': f'{self.BASE_URL}/shift_claim/{shift_id}/',
-            },
-            data=data,
-        )
+        res = self.http.post(claim_url, data=data, referer=claim_url)
 
         return True if re.search(confirmation_message, res.text) else False
 
@@ -257,6 +247,9 @@ if __name__ == '__main__':
                         help='target shift name')
     parser.add_argument('--target_date', type=str,
                         help='target shift date')
+    parser.add_argument('--headless', action='store_true',
+                        help='run the browser headless (more likely to be '
+                             'blocked by Cloudflare)')
 
     args = parser.parse_args()
 
@@ -265,5 +258,6 @@ if __name__ == '__main__':
     if (args.shift_title and args.target_date):
         target_shift = {'title': args.shift_title, 'date': args.target_date}
 
-    cc = CoopCron(args.username, args.password, target_shift)
-    cc.write_shifts_to_file('shifts.json')
+    with CfSession(headless=args.headless) as http:
+        cc = CoopCron(args.username, args.password, http, target_shift)
+        cc.write_shifts_to_file('shifts.json')

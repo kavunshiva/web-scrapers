@@ -78,7 +78,7 @@ if __name__ == '__main__':
                                      args.end_time, court_type, session,
                                      args.permitted).available():
             available_court_times.append(court_time)
-    court_time_messages = record_court_times() or []
+    court_time_messages = record_court_times(available_court_times) or []
     if court_time_messages:
         message_lines = [
             f'The following courts are available for {args.court_date}:\n'
